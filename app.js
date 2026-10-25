@@ -1,87 +1,69 @@
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
-var exphbs = require('express-handlebars');
-var expressValidator = require('express-validator');
-var flash = require('connect-flash');
-var session = require('express-session');
-var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
-var mongo = require('mongodb');
-var mongoose = require('mongoose');
+const path = require('node:path');
+const express = require('express');
+const { engine } = require('express-handlebars');
+const session = require('express-session');
+const passport = require('passport');
+const configurePassport = require('./config/passport');
+const { csrf, flash } = require('./middleware');
 
-mongoose.connect('mongodb://localhost/loginapp');
-var db = mongoose.connection;
+/**
+ * @param {object} config  { sessionSecret, isProduction }
+ * @param {object} [options]  { sessionStore } -- defaults to the in-memory store (tests, quick local runs)
+ */
+function createApp(config, { sessionStore } = {}) {
+  const app = express();
+  app.disable('x-powered-by');
+  if (config.isProduction) app.set('trust proxy', 1);
 
-var routes = require('./routes/index');
-var users = require('./routes/users');
+  app.engine('handlebars', engine({ defaultLayout: 'layout' }));
+  app.set('view engine', 'handlebars');
+  app.set('views', path.join(__dirname, 'views'));
 
-// Init App
-var app = express();
+  app.use(express.static(path.join(__dirname, 'public')));
+  app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 
-// View Engine
-app.set('views', path.join(__dirname, 'views'));
-app.engine('handlebars', exphbs({defaultLayout:'layout'}));
-app.set('view engine', 'handlebars');
+  app.use(
+    session({
+      name: 'loginapp.sid',
+      secret: config.sessionSecret,
+      store: sessionStore,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: Boolean(config.isProduction),
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      },
+    }),
+  );
 
-// BodyParser Middleware
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
+  configurePassport(passport);
+  app.use(passport.initialize());
+  app.use(passport.session());
+  app.use(flash);
+  app.use(csrf);
 
-// Set Static Folder
-app.use(express.static(path.join(__dirname, 'public')));
+  // Available in every view.
+  app.use((req, res, next) => {
+    res.locals.success_msg = req.flash('success_msg');
+    res.locals.error_msg = req.flash('error_msg');
+    res.locals.error = req.flash('error');
+    res.locals.user = req.user ? { name: req.user.name, username: req.user.username } : null;
+    next();
+  });
 
-// Express Session
-app.use(session({
-    secret: 'secret',
-    saveUninitialized: true,
-    resave: true
-}));
+  app.use('/', require('./routes/index'));
+  app.use('/users', require('./routes/users'));
 
-// Passport init
-app.use(passport.initialize());
-app.use(passport.session());
+  app.use((req, res) => res.status(404).render('error', { message: 'Page not found' }));
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(500).render('error', { message: 'Something went wrong' });
+  });
 
-// Express Validator
-app.use(expressValidator({
-  errorFormatter: function(param, msg, value) {
-      var namespace = param.split('.')
-      , root    = namespace.shift()
-      , formParam = root;
+  return app;
+}
 
-    while(namespace.length) {
-      formParam += '[' + namespace.shift() + ']';
-    }
-    return {
-      param : formParam,
-      msg   : msg,
-      value : value
-    };
-  }
-}));
-
-// Connect Flash
-app.use(flash());
-
-// Global Vars
-app.use(function (req, res, next) {
-  res.locals.success_msg = req.flash('success_msg');
-  res.locals.error_msg = req.flash('error_msg');
-  res.locals.error = req.flash('error');
-  res.locals.user = req.user || null;
-  next();
-});
-
-
-
-app.use('/', routes);
-app.use('/users', users);
-
-// Set Port
-app.set('port', (process.env.PORT || 3000));
-
-app.listen(app.get('port'), function(){
-	console.log('Server started on port '+app.get('port'));
-});
+module.exports = { createApp };

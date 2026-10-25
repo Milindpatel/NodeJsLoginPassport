@@ -1,60 +1,46 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <title>LoginApp</title>
-    <!-- Latest compiled and minified CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-
-    <!-- jQuery library -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-
-    <!-- Latest compiled JavaScript -->
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-    <link rel="stylesheet" href="/public/css/style.css">
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LoginApp</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header clearfix">
-          <nav>
-            <ul class="nav nav-pills pull-right">
-              {{#if user}}
-                <li role="presentation"><a href="/">Dashboard</a></li>
-                <li role="presentation"><a href="/users/logout">Logout</a></li>
-              {{else}}
-                <li role="presentation"><a href="/users/login">Login</a></li>
-                <li role="presentation"><a href="/users/register">Register</a></li>
-              {{/if}}
-            </ul>
-          </nav>
-          <h3 class="text-muted">LoginApp</h3>
-        </div>
-  
-  
-        <div class="row">
-          <div class="col-lg-12">
-            {{#if success_msg}}
-              <div class="alert alert-success">{{success_msg}}</div>
-            {{/if}}
-  
-            {{#if error_msg}}
-              <div class="alert alert-danger">{{error_msg}}</div>
-            {{/if}}
-  
-            {{#if error}}
-              <div class="alert alert-danger">{{error}}</div>
-            {{/if}}
-            
-            {{{body}}}
-          </div>
-  
-          
-        </div>
-  
-        <footer class="footer">
-          <p>&copy; 2015 LoginApp, Inc.</p>
-        </footer>
-  
-      </div> <!-- /container -->
+  <div class="container">
+    <header class="header d-flex align-items-center justify-content-between">
+      <h3 class="text-body-secondary m-0">LoginApp</h3>
+      <nav>
+        <ul class="nav nav-pills">
+          {{#if user}}
+            <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+            <li class="nav-item">
+              <form method="post" action="/users/logout">
+                <input type="hidden" name="_csrf" value="{{csrfToken}}">
+                <button type="submit" class="nav-link">Logout</button>
+              </form>
+            </li>
+          {{else}}
+            <li class="nav-item"><a class="nav-link" href="/users/login">Login</a></li>
+            <li class="nav-item"><a class="nav-link" href="/users/register">Register</a></li>
+          {{/if}}
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      {{#each success_msg}}<div class="alert alert-success">{{this}}</div>{{/each}}
+      {{#each error_msg}}<div class="alert alert-danger">{{this}}</div>{{/each}}
+      {{#each error}}<div class="alert alert-danger">{{this}}</div>{{/each}}
+
+      {{{body}}}
+    </main>
+
+    <footer class="footer">
+      <p>&copy; LoginApp</p>
+    </footer>
+  </div>
 </body>
 </html>
